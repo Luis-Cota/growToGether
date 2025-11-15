@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1010600879077",
+    "project_id": "growtogether-9f1b8",
+    "storage_bucket": "growtogether-9f1b8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1010600879077:android:4a8423ab9c3e654306050c",
+        "android_client_info": {
+          "package_name": "com.example.growtogether_ux"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDFBZKhyvRe7XAHvmQ5EGs_frfiHsT8r5U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
