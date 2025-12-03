@@ -1,3 +1,4 @@
+
 {
   "project_info": {
     "project_number": "1010600879077",
@@ -12,7 +13,12 @@
           "package_name": "com.example.growtogether_ux"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1010600879077-dh5535mq5mu7is5f2kpvdhrbifdacsgq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDFBZKhyvRe7XAHvmQ5EGs_frfiHsT8r5U"
@@ -20,7 +26,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1010600879077-dh5535mq5mu7is5f2kpvdhrbifdacsgq.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1010600879077-qpd3oogehig0m86lubiv2q35ma3fl9o8.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.growtogetherUx"
+              }
+            }
+          ]
         }
       }
     }

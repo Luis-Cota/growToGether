@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:growtogether_ux/database_manager/database_config.dart';
 import 'package:growtogether_ux/screens/post_form.dart';
 import 'package:growtogether_ux/screens/post_view.dart';
-import 'package:growtogether_ux/screens/user_profile.dart';
+//import 'package:growtogether_ux/screens/user_profile.dart';
 import '../model/post.dart';
-import '../model/post_Manager.dart';
+import '../model/post_services.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+import 'package:intl/intl.dart';
 
 class SocialMediaPage extends StatefulWidget {
-
   const SocialMediaPage({super.key});
 
   @override
@@ -16,117 +19,244 @@ class SocialMediaPage extends StatefulWidget {
 
 class _SocialMediaPageState extends State<SocialMediaPage> {
   int selectedPost = 0;
-  late PostManager posts;
+  bool dbRead = false;
+  late PostServices posts;
+  late DatabaseConfig dbConfig;
+
+  @override
+  void initState() {
+    super.initState();
+    dbConfig = DatabaseConfig.getInstance();
+  }
 
   @override
   Widget build(BuildContext context) {
-    posts = Provider.of<PostManager>(context);
+    posts = Provider.of<PostServices>(context);
+
+    if (!dbRead) {
+      dbConfig.posts().then((value) {
+        posts.setPosts(value);
+        dbRead = true;
+      });
+    }
+
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text("Biblioteca de Álbumes"),
-        actions: [
-          PopupMenuButton(
-                itemBuilder:(context) => <PopupMenuEntry>[
-                  const PopupMenuItem(
-                    value: 1,
-                    child: Text("Perfíl del usuario")),
-                  const PopupMenuItem(
-                    value: 2,
-                    child: Text("Acerca de ...")),],
-                onSelected: (value) {setState(() {
-                  if (value == 1) {
-                    Navigator.of(context).push(MaterialPageRoute(
-                      builder: (context) => const UserProfile()));
-                  } else if (value == 2) {
-
-                    // Aquí se mostrará una página con datos de la aplicación
-                  }});})],),
-      body: (posts.posts.isNotEmpty)? ListView(
-        padding: const EdgeInsets.all(10),
-        children: ListTile.divideTiles(context: context, 
-          tiles: crearLista(), color:Colors.amber).toList(),)
-        : Padding(padding: const EdgeInsets.all(20.0),
-          child: Center(
-            child: ElevatedButton(
-              onPressed: () {
-                capturarAlbum(context);},
-              child: const Text("Agregar Album"),)),),
+        backgroundColor: Theme.of(context).colorScheme.onPrimary,
+        title: const Text("Publicaciones :"),
+        actions: [],
+      ),
+      body: !dbRead
+          ? const Center(child: CircularProgressIndicator())
+          : (posts.posts.isNotEmpty)
+          ? ListView(
+              padding: const EdgeInsets.all(10),
+              children: ListTile.divideTiles(
+                context: context,
+                tiles: createList(),
+                color: const Color.fromARGB(255, 0, 0, 0),
+              ).toList(),
+            )
+          : Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Center(
+                child: ElevatedButton(
+                  onPressed: () {
+                    capturePost(context);
+                  },
+                  child: const Text("Agregar Post"),
+                ),
+              ),
+            ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () { capturarAlbum(context); },
-        tooltip: 'Nuevo album',
-        child: const Icon(Icons.add),),);}
+        onPressed: () {
+          capturePost(context);
+        },
+        tooltip: 'Nuevo Post',
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
 
-  List<Widget> crearLista() {
-    final List<Widget> lista = <Widget>[];
-    for(int i = 0; i < posts.posts.length; i++ ){
+  List<Widget> createList() {
+    final List<Widget> list = <Widget>[];
+    final String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    for (int i = 0; i < posts.posts.length; i++) {
       Post post = posts.posts[i];
-      lista.add(
+      final bool isCreator =
+          currentUserId != null && currentUserId == post.idCreator;
+      String? firstUrl =
+          (post.mediaUrls != List.empty() && post.mediaUrls.isNotEmpty)
+          ? post.mediaUrls[0]
+          : null;
+      list.add(
         ListTile(
-          leading: const Icon(Icons.album),
-          title: Text(post.title),
-          subtitle: Text("${post.title}, Año: ${post.date}, Género: ${post.description}"),
-          trailing: SizedBox(width: 120,
+          leading: (firstUrl != null && firstUrl.startsWith('http'))
+              ? Image.network(
+                  firstUrl,
+                  width: 80,
+                  height: 80,
+                  fit: BoxFit.cover,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return const Center(
+                      child: CircularProgressIndicator(strokeWidth: 1),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    return Icon(
+                      MdiIcons.flowerTulip,
+                      color: const Color.fromARGB(255, 0, 0, 0),
+                    );
+                  },
+                )
+              : Icon(
+                  MdiIcons.flowerTulip,
+                  color: const Color.fromARGB(255, 0, 0, 0),
+                ),
+          title: Text(
+            post.title,
+            maxLines: 1,
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          subtitle: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        post.content,
+                        maxLines: 4,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Row(
+                children: [
+                  Icon(
+                    MdiIcons.cardsHeart,
+                    size: 16.0,
+                    color: const Color.fromARGB(255, 0, 0, 0),
+                  ),
+                  Text('${post.likes}'),
+
+                  const SizedBox(width: 16),
+
+                  const Icon(
+                    Icons.calendar_today,
+                    size: 16.0,
+                    color: Color.fromARGB(255, 0, 0, 0),
+                  ),
+                  Text(DateFormat('dd/MM/yyyy hh:mm a').format(post.date)),
+
+                  const SizedBox(width: 16),
+
+                  const Icon(
+                    Icons.comment,
+                    size: 16.0,
+                    color: Color.fromARGB(255, 0, 0, 0),
+                  ),
+                  const Text('0'),
+                ],
+              ),
+            ],
+          ),
+
+          trailing: SizedBox(
+            width: 120,
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              child: crearButtonsBar(i))),
-          textColor: Colors.white,
-          tileColor: Colors.lightBlue,
-          selectedColor: Colors.blue,
-          selectedTileColor: Colors.deepOrange.shade100,
+              child: isCreator
+                  ? crearButtonsBar(i)
+                  : const SizedBox.shrink(), // Ocultar el botón si no es el creador
+            ),
+          ),
+          textColor: const Color.fromARGB(255, 0, 52, 33),
+          tileColor: const Color.fromARGB(255, 255, 255, 255),
+          selectedColor: const Color.fromARGB(255, 0, 0, 0),
+          selectedTileColor: const Color.fromARGB(255, 202, 255, 202),
           selected: (selectedPost == i),
-          onTap: () => albumTapped(i)));}
-    return lista;}
+          onTap: () => showPost(context, i),
+        ),
+      );
+
+      Divider();
+    }
+    return list;
+  }
 
   void albumTapped(int i) {
     setState(() {
-      selectedPost = i;});}
+      selectedPost = i;
+    });
+  }
 
   Widget crearButtonsBar(int index) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
-    children: [
-      IconButton(
-        tooltip: "Ver",
-        onPressed: () { mostrarAlbum(context, index); },
-        icon: const Icon(Icons.search)),
-      IconButton(
-        tooltip: "Editar",
-        onPressed: () { actualizarAlbum(context, index); }, 
-        icon: const Icon(Icons.edit)),
-      IconButton(
-        tooltip: "Eliminar",
-        onPressed: () { removerAlbum(index); }, 
-        icon: const Icon(Icons.delete)),],);}
+      children: [
+        IconButton(
+          tooltip: "Editar",
+          onPressed: () {
+            updatePost(context, index);
+          },
+          icon: const Icon(Icons.edit),
+        ),
+        IconButton(
+          tooltip: "Eliminar",
+          onPressed: () {
+            removePost(index);
+          },
+          icon: const Icon(Icons.delete),
+        ),
+      ],
+    );
+  }
 
-  Future<void> capturarAlbum(BuildContext context) async {
-    final Post? post = await Navigator.push(context, 
-      MaterialPageRoute(
-        builder: (context) => const PostForm(),));
+  Future<void> capturePost(BuildContext context) async {
+    final Post? post = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const PostForm()),
+    );
 
     if (post != null) {
+      String id = await dbConfig.insertPost(post);
+      post.setId(id);
       posts.addPost(post);
-      posts.guardarposts();}}
+    }
+  }
 
-  void mostrarAlbum(BuildContext context, int index) {
+  void showPost(BuildContext context, int index) {
     Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => 
-              PostView(post: posts.getPostByIndex(index),),));}
-
-
-
-  
-  Future<void> actualizarAlbum(BuildContext context, int index,) async {
-    Post? post = await Navigator.push(context, 
       MaterialPageRoute(
-        builder: (context) => PostForm(post: posts.getPostByIndex(index)),));
+        builder: (context) => PostView(post: posts.getPostbyIndex(index)),
+      ),
+    );
+  }
 
-    if(post != null){
+  Future<void> updatePost(BuildContext context, int index) async {
+    Post? post = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PostForm(post: posts.getPostbyIndex(index)),
+      ),
+    );
+
+    if (post != null) {
       posts.updatePost(index, post);
-      posts.guardarposts();}}
+      dbConfig.updatePost(post);
+    }
+  }
 
-  bool removerAlbum(int index) {
-    bool res = posts.removePost(index);
-    if (res) posts.guardarposts();
-    return res;}}
+  bool removePost(int index) {
+    Post post = posts.getPostbyIndex(index);
+    bool remove = posts.deletePost(index);
+    dbConfig.deletePost(post.id!);
+    return remove;
+  }
+}
